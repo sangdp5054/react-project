@@ -1,10 +1,8 @@
 import './App.css';
-import Person from './components/Person';
 function App() {
   return (
     <div className="App">
-      <h1>Hello</h1>
-      <Person></Person>
+      <h1>LOL TÂM CODE ĐI</h1>
     </div>
   );
 }
