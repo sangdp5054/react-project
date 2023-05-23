@@ -1,12 +1,16 @@
 import axios from "axios";
-const axiosClient = axios.create({
+const ApiAxiosClient = axios.create({
     baseURL: 'http://115.78.1.139:2221',
     timeout: 1000,
-    headers: { 'X-Custom-Header': 'foobar' }
+    headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+    },
 });
 // Add a request interceptor
-axiosClient.interceptors.request.use(function (config) {
+ApiAxiosClient.interceptors.request.use(function (config) {
     // Do something before request is sent
+
     return config;
 }, function (error) {
     // Do something with request error
@@ -14,13 +18,14 @@ axiosClient.interceptors.request.use(function (config) {
 });
 
 // Add a response interceptor
-axiosClient.interceptors.response.use(function (response) {
+ApiAxiosClient.interceptors.response.use(function (response) {
     // Any status code that lie within the range of 2xx cause this function to trigger
     // Do something with response data
+
     return response.data;
 }, function (error) {
     // Any status codes that falls outside the range of 2xx cause this function to trigger
     // Do something with response error
     return Promise.reject(error);
 });
-export default axiosClient;
+export default ApiAxiosClient;

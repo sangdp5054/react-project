@@ -1,24 +1,24 @@
-import axiosClient from "./axiosClient";
-const userApi = {
+import ApiAxiosClient from '../Api/AxiosClient';
+const ApiUser = {
     getAll(params) {
         const url = '/api/v1/acs/acs_registrycardmonth';
-        return axiosClient.get(url, { params });
+        return ApiAxiosClient.get(url, { params });
     },
     get(id) {
         const url = '/api/v1/acs/acs_registrycardmonth/${id}';
-        return axiosClient.get(url);
+        return ApiAxiosClient.get(url);
     },
     add(data) {
         const url = '/api/v1/acs/acs_registrycardmonth';
-        return axiosClient.post(url, data);
+        return ApiAxiosClient.post(url, data);
     },
     update(data) {
         const url = '/api/v1/acs/acs_registrycardmonth/${data.id}';
-        return axiosClient.patch(url, data);
+        return ApiAxiosClient.patch(url, data);
     },
     remove(id) {
         const url = '/api/v1/acs/acs_registrycardmonth/${data.id}';
-        return axiosClient.delete(url);
+        return ApiAxiosClient.delete(url);
     }
     // render() {
     //     <div className="list-user-container">
@@ -33,4 +33,4 @@ const userApi = {
     //     </div>
     // }
 };
-export default userApi;
+export default ApiUser;
