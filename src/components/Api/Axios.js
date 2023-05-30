@@ -1,6 +1,6 @@
 import axios from "axios";
 const ApiAxiosClient = axios.create({
-    baseURL: 'http://115.78.1.139:2221',
+    baseURL: "http://localhost:5000/",
     timeout: 1000,
     headers: {
         Accept: "application/json",

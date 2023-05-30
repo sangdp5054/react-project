@@ -12,6 +12,7 @@ import UiSearchBar from '../Ui/SearchBar';
 import UiFilter from '../Ui/Filter';
 import UiPagination from '../Ui/Pagination';
 import UiSelect from '../Ui/Select';
+import UiFavorite from '../Ui/Favorite';
 function UserList() {
     const [users, setUsers] = useState([]);
     const [search, setSearch] = useState('');
@@ -23,19 +24,44 @@ function UserList() {
     const [selectAll, setSelectAll] = useState(false);
     const [groupByAttribute, setGroupByAttribute] = useState('');
     const [expandedGroups, setExpandedGroups] = useState([]);
-
+    const [filteredGroups, setFilteredGroups] = useState({});
+    const [favorites, setFavorites] = useState([]);
+    const [favoriteName, setFavoriteName] = useState('');
+    const [searchText, setSearchText] = useState('');
+    // // Fetch users from the API
+    // useEffect(() => {
+    //     const fetchUsers = async () => {
+    //         const response = await ApiUser.getAll();
+    //         const initialSelectedUsers = response.data.reduce((acc, user) => {
+    //             acc[user.id] = false;
+    //             return acc;
+    //         }, {});
+    //         setSelectedUsers(initialSelectedUsers);
+    //         setUsers(response.data);
+    //         console.log(response)
+    //     };
+    //     fetchUsers();
+    // }, []);
 
     // Fetch users from the API
     useEffect(() => {
         const fetchUsers = async () => {
-            const response = await ApiUser.getAll();
-            const initialSelectedUsers = response.data.reduce((acc, user) => {
-                acc[user.id] = false;
-                return acc;
-            }, {});
-            setSelectedUsers(initialSelectedUsers);
-            setUsers(response.data);
-            console.log(response)
+            try {
+                const response = await fetch('http://localhost:5000/data');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch users');
+                }
+                const data = await response.json();
+                const initialSelectedUsers = data.reduce((acc, user) => {
+                    acc[user.id] = false;
+                    return acc;
+                }, {});
+                setSelectedUsers(initialSelectedUsers);
+                setUsers(data);
+                console.log(data);
+            } catch (error) {
+                console.error(error);
+            }
         };
         fetchUsers();
     }, []);
@@ -50,9 +76,9 @@ function UserList() {
         if (filter === 'all') {
             return true;
         } else if (filter === 'active') {
-            return user.statusConfirm === 'Đã Xác nhận';
+            return user.partnerType === 'Công ty';
         } else if (filter === 'inactive') {
-            return user.statusConfirm === 'Bản nháp';
+            return user.partnerType === 'Khách lẻ';
         }
     }).filter((user) =>
         user.partnerName.toLowerCase().includes(search.toLowerCase())
@@ -113,12 +139,86 @@ function UserList() {
             setExpandedGroups((prevExpandedGroups) => [...prevExpandedGroups, groupKey]);
         }
     };
+    // Filter grouped data based on search and filter
+    const filterGroupedData = () => {
+        const filteredData = {};
+
+        Object.entries(groupedData).forEach(([groupKey, groupUsers]) => {
+            const filteredUsers = groupUsers.filter(user =>
+                user.partnerName.toLowerCase().includes(search.toLowerCase())
+            );
+
+            if (filter === 'all') {
+                if (filteredUsers.length > 0) {
+                    filteredData[groupKey] = filteredUsers;
+                }
+            } else if (filter === 'active') {
+                const activeUsers = filteredUsers.filter(
+                    user => user.partnerType === 'Công ty'
+                );
+                if (activeUsers.length > 0) {
+                    filteredData[groupKey] = activeUsers;
+                }
+            } else if (filter === 'inactive') {
+                const inactiveUsers = filteredUsers.filter(
+                    user => user.partnerType === 'Khách lẻ'
+                );
+                if (inactiveUsers.length > 0) {
+                    filteredData[groupKey] = inactiveUsers;
+                }
+            }
+        });
+
+        setFilteredGroups(filteredData);
+    };
+    useEffect(() => {
+        filterGroupedData();
+    }, [search, filter, groupedData]);
+    // Save favorite
+    const saveFavorite = () => {
+        const newFavorite = {
+            name: favoriteName,
+            search,
+            filter,
+            groupBy: groupByAttribute,
+        };
+        setFavorites([...favorites, newFavorite]);
+        setFavoriteName('');
+    };
+    // Load favorite
+    const loadFavorite = (favorite) => {
+        setSearch(favorite.search);
+        setFilter(favorite.filter);
+        setGroupByAttribute(favorite.groupBy);
+    };
+    // Before the return statement
+    const handleFavoriteNameChange = (e) => {
+        setFavoriteName(e.target.value);
+    };
+    // Reset tìm kiếm, bộ lọc và nhóm theo
+    const resetFilters = () => {
+        setSearch('');
+        setFilter('all');
+        setGroupByAttribute('');
+        setExpandedGroups([]);
+        setFilteredGroups({});
+    };
+    // Reset danh sách người dùng đã lọc về danh sách ban đầu
+    const handleReset = () => {
+        setUsers(users);
+        setCurrentPage(1);
+        resetFilters();
+    };
+    const handleSearchTextChange = (event) => {
+        setSearchText(event.target.value);
+    };
     return (
         <div>
             <Container>
 
                 <h1>Danh sách</h1>
                 <div className='d-flex justify-content-between align-items-center'>
+
                     {/* Search */}
                     <UiSearchBar onSearchChange={setSearch} />
                     {/* Excel */}
@@ -135,6 +235,15 @@ function UserList() {
                         ))}
                     </select>
 
+                    {/* Save and Load Favorites */}
+                    <UiFavorite
+                        favorites={favorites}
+                        favoriteName={favoriteName}
+                        onFavoriteNameChange={handleFavoriteNameChange}
+                        saveFavorite={saveFavorite}
+                        loadFavorite={loadFavorite}
+                        reset={resetFilters}
+                    />
                 </div>
 
                 <div className='table-responsive'>
@@ -154,7 +263,7 @@ function UserList() {
                         </thead>
                         <tbody>
                             {groupByAttribute
-                                ? Object.entries(groupedData).map(([groupKey, groupUsers], index) => (
+                                ? Object.entries(filteredGroups).map(([groupKey, groupUsers], index) => (
                                     <React.Fragment key={index}>
                                         <tr>
                                             <th colSpan={tableHeaders.length + 1} className="group-row">

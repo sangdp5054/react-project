@@ -9,12 +9,12 @@ function UiFilter({ filter, onFilterChange }) {
     return (
         <Dropdown onSelect={handleFilterChange}>
             <Dropdown.Toggle variant='primary' id='dropdown-basic'>
-                Filter
+                Filter partnerType
             </Dropdown.Toggle>
             <Dropdown.Menu>
                 <Dropdown.Item eventKey='all'>All</Dropdown.Item>
-                <Dropdown.Item eventKey='active'>Đã xác nhận</Dropdown.Item>
-                <Dropdown.Item eventKey='inactive'>Bản nháp</Dropdown.Item>
+                <Dropdown.Item eventKey='active'>Công ty</Dropdown.Item>
+                <Dropdown.Item eventKey='inactive'>Khách lẻ</Dropdown.Item>
             </Dropdown.Menu>
         </Dropdown>
     );
