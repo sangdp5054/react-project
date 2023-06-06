@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Container } from 'react-bootstrap';
 import Table from 'react-bootstrap/Table';
 import _ from 'lodash';
@@ -13,13 +13,15 @@ import UiFilter from '../Ui/Filter';
 import UiPagination from '../Ui/Pagination';
 import UiSelect from '../Ui/Select';
 import UiFavorite from '../Ui/Favorite';
+import UicolumnConfig from '../Ui/columnConfig';
+import UiFilterConfig from '../Ui/FilterConfig';
+import UiPerPage from '../Ui/PerPage';
 function UserList() {
     const [users, setUsers] = useState([]);
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const [usersPerPage] = useState(5);
-    const tableHeaders = users.length > 0 ? Object.keys(users[0]) : [];
+    const [usersPerPage, setUsersPerPage] = useState(5);
     const [selectedUsers, setSelectedUsers] = useState({});
     const [selectAll, setSelectAll] = useState(false);
     const [groupByAttribute, setGroupByAttribute] = useState('');
@@ -27,7 +29,6 @@ function UserList() {
     const [filteredGroups, setFilteredGroups] = useState({});
     const [favorites, setFavorites] = useState([]);
     const [favoriteName, setFavoriteName] = useState('');
-    const [searchText, setSearchText] = useState('');
     // // Fetch users from the API
     // useEffect(() => {
     //     const fetchUsers = async () => {
@@ -44,68 +45,74 @@ function UserList() {
     // }, []);
 
     // Fetch users from the API
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const response = await fetch('http://localhost:5000/data');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch users');
-                }
-                const data = await response.json();
-                const initialSelectedUsers = data.reduce((acc, user) => {
-                    acc[user.id] = false;
-                    return acc;
-                }, {});
-                setSelectedUsers(initialSelectedUsers);
-                setUsers(data);
-                console.log(data);
-            } catch (error) {
-                console.error(error);
+    const fetchUsers = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:5000/data');
+            if (!response.ok) {
+                throw new Error('Failed to fetch users');
             }
-        };
-        fetchUsers();
+            const data = await response.json();
+
+            const initialSelectedUsers = data.reduce((acc, user) => {
+                acc[user.id] = false;
+                return acc;
+            }, {});
+            setSelectedUsers(initialSelectedUsers);
+            setUsers(data);
+            console.log(data);
+        } catch (error) {
+            console.error(error);
+        }
     }, []);
 
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
     // Handle filter change
-    const handleFilterChange = (eventKey) => {
+    const handleFilterChange = useCallback((eventKey) => {
         setFilter(eventKey);
-    };
+    }, []);
+
 
     // Apply search and filter on users
-    const filteredUsers = users.filter((user) => {
-        if (filter === 'all') {
-            return true;
-        } else if (filter === 'active') {
-            return user.partnerType === 'Công ty';
-        } else if (filter === 'inactive') {
-            return user.partnerType === 'Khách lẻ';
-        }
-    }).filter((user) =>
-        user.partnerName.toLowerCase().includes(search.toLowerCase())
-    )
-
+    const filteredUsers = useMemo(() => {
+        return users.filter((user) => {
+            const filterFunction = UiFilterConfig[filter]?.filterFunction;
+            return filterFunction ? filterFunction(user) : true;
+        }).filter((user) =>
+            user.partnerName.toLowerCase().includes(search.toLowerCase())
+        );
+    }, [users, filter, search]);
     // Pagination
     //Tính tổng số trang
-    const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+    const totalPages = useMemo(() => {
+        return Math.ceil(filteredUsers.length / usersPerPage);
+    }, [filteredUsers.length, usersPerPage]);
     //Lấy danh sách người dùng hiện tại
     const indexOfLastUser = currentPage * usersPerPage;
     const indexOfFirstUser = indexOfLastUser - usersPerPage;
-    const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-
+    const currentUsers = useMemo(() => {
+        return filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+    }, [filteredUsers, indexOfFirstUser, indexOfLastUser]);
     // Handle page change
-    const handlePageChange = (pageNumber) => {
+    const handlePageChange = useCallback((pageNumber) => {
         setCurrentPage(pageNumber);
-    };
-
+    }, []);
+    // Handle users per page change
+    const handleUsersPerPageChange = useCallback((value) => {
+        setUsersPerPage(value);
+        setCurrentPage(1);// Reset current page when the number of users per page changes
+    }, []);
     // Handle user selection
-    const handleUserSelect = (userId) => {
+    const handleUserSelect = useCallback((userId) => {
         setSelectedUsers((prevState) => ({
             ...prevState,
             [userId]: !prevState[userId]
         }));
-    };
+    }, []);
     // Handle "Select All" checkbox
-    const handleSelectAll = () => {
+    const handleSelectAll = useCallback(() => {
         const allSelected = !selectAll;
         setSelectAll(allSelected);
         const updatedSelectedUsers = {};
@@ -113,7 +120,7 @@ function UserList() {
             updatedSelectedUsers[userId] = allSelected;
         });
         setSelectedUsers(updatedSelectedUsers);
-    };
+    }, [selectAll, selectedUsers]);
     // Export selected users to Excel   
     const handleExportToExcel = () => {
         const selectedUserIds = Object.keys(selectedUsers).filter((userId) => selectedUsers[userId]);
@@ -152,19 +159,13 @@ function UserList() {
                 if (filteredUsers.length > 0) {
                     filteredData[groupKey] = filteredUsers;
                 }
-            } else if (filter === 'active') {
-                const activeUsers = filteredUsers.filter(
-                    user => user.partnerType === 'Công ty'
-                );
-                if (activeUsers.length > 0) {
-                    filteredData[groupKey] = activeUsers;
-                }
-            } else if (filter === 'inactive') {
-                const inactiveUsers = filteredUsers.filter(
-                    user => user.partnerType === 'Khách lẻ'
-                );
-                if (inactiveUsers.length > 0) {
-                    filteredData[groupKey] = inactiveUsers;
+            } else {
+                const filterFunction = UiFilterConfig[filter]?.filterFunction;
+                if (filterFunction) {
+                    const filteredGroupUsers = filteredUsers.filter(filterFunction);
+                    if (filteredGroupUsers.length > 0) {
+                        filteredData[groupKey] = filteredGroupUsers;
+                    }
                 }
             }
         });
@@ -185,6 +186,7 @@ function UserList() {
         setFavorites([...favorites, newFavorite]);
         setFavoriteName('');
     };
+
     // Load favorite
     const loadFavorite = (favorite) => {
         setSearch(favorite.search);
@@ -192,9 +194,9 @@ function UserList() {
         setGroupByAttribute(favorite.groupBy);
     };
     // Before the return statement
-    const handleFavoriteNameChange = (e) => {
-        setFavoriteName(e.target.value);
-    };
+    const handleFavoriteNameChange = useCallback((event) => {
+        setFavoriteName(event.target.value);
+    }, []);
     // Reset tìm kiếm, bộ lọc và nhóm theo
     const resetFilters = () => {
         setSearch('');
@@ -209,9 +211,9 @@ function UserList() {
         setCurrentPage(1);
         resetFilters();
     };
-    const handleSearchTextChange = (event) => {
-        setSearchText(event.target.value);
-    };
+
+    // Get table headers from the column configuration
+    const tableHeaders = Object.keys(UicolumnConfig);
     return (
         <div>
             <Container>
@@ -257,7 +259,7 @@ function UserList() {
                                     />
                                 </th>
                                 {tableHeaders.map((header, index) => (
-                                    <th key={index}>{header}</th>
+                                    <th key={index}>{UicolumnConfig[header]}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -309,6 +311,12 @@ function UserList() {
                 </div>
 
                 <div class="pagination justify-content-center">
+                    {/* Users Per Page */}
+                    <UiPerPage
+                        value={usersPerPage}
+                        options={[5, 10, 15]}
+                        onSelectChange={handleUsersPerPageChange}
+                    />
                     <UiPagination
                         totalPages={totalPages}
                         currentPage={currentPage}

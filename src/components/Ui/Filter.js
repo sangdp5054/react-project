@@ -1,6 +1,6 @@
 import React from 'react';
 import { Dropdown } from 'react-bootstrap';
-
+import UiFilterConfig from './FilterConfig';
 function UiFilter({ filter, onFilterChange }) {
     const handleFilterChange = (eventKey) => {
         onFilterChange(eventKey);
@@ -9,12 +9,14 @@ function UiFilter({ filter, onFilterChange }) {
     return (
         <Dropdown onSelect={handleFilterChange}>
             <Dropdown.Toggle variant='primary' id='dropdown-basic'>
-                Filter partnerType
+                Filter
             </Dropdown.Toggle>
             <Dropdown.Menu>
-                <Dropdown.Item eventKey='all'>All</Dropdown.Item>
-                <Dropdown.Item eventKey='active'>Công ty</Dropdown.Item>
-                <Dropdown.Item eventKey='inactive'>Khách lẻ</Dropdown.Item>
+                {Object.keys(UiFilterConfig).map((option) => (
+                    <Dropdown.Item key={option} eventKey={option}>
+                        {UiFilterConfig[option].label}
+                    </Dropdown.Item>
+                ))}
             </Dropdown.Menu>
         </Dropdown>
     );
